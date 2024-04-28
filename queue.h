@@ -1,3 +1,6 @@
+#ifndef _QUEUE_H_
+#define _QUEUE_H_
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdatomic.h>
@@ -31,3 +34,5 @@ void enqueue(LockFreeQueue* queue, Path_t data);
 Path_t dequeue(LockFreeQueue* queue);
 
 void destroyQueue(LockFreeQueue* queue);
+
+#endif

@@ -2,7 +2,7 @@
 #include <stdint.h>
 #include "queue.h"
 #include "pthread.h"
-
+#include "map.h"
 /*
 1 9.691574 53.467487
 2 10.265706 44.962074
@@ -14,15 +14,19 @@
 8 16.857571 47.994888
 */
 
-#define CITIES_NB 7
+#define CITIES_NB 8
 
-city_t map[7] = {{0,9.96,53.46},
+city_t map[8] = {{0,9.96,53.46},
 {1,10.26,44.96},
-{2,1.32,43.68},
-{3,35.32,37.0},
-{4,35.32,37.0},
-{5,35.32,37.0},
-{6,35.32,37.0}};
+{2, 1.318086 ,43.683212},
+{3, 35.321335, 37.000000},
+{4, 20.552652, 46.863564},
+{5, 26.253811, 44.529980},
+{6, 18.695515, 45.554962},
+{7, 16.857571, 47.994888}
+};
+
+float shortest_dist = 99999999;
 
 
 LockFreeQueue* paths_queue;
@@ -59,9 +63,16 @@ void create_downstream_paths(Path_t origin){
         }
         if ( index > 0) { /* Append this city to the original path and enqueue it */
             Path_t new_path = origin;
-            new_path.cities[++new_path.depth].index = index;     
+            new_path.cities[++new_path.depth].index = index;    
+            new_path.cities[new_path.depth] = map[index]; 
             enqueue(paths_queue, new_path);   
         }
+    }
+    if( origin.depth == 7){
+        printf("inserting leaf\n");
+        origin.cities[++origin.depth].index = 0;    
+        origin.cities[origin.depth] = map[0]; 
+        enqueue(paths_queue, origin);   
     }
 }
 
@@ -71,15 +82,20 @@ void path_finder(void){
     while(1){
         /* Dequeue an origin */
         Path_t origin = dequeue(paths_queue);
-        printf("Measuring new path: ");
-        print_path(origin);
 
         /* Measure distance of this path */
-             // float distance = measure_distance(origin)
+        float distance = measure_path_length(origin);
 
-        // If distance < shortest_path
+        if( distance < shortest_dist ) {
             /* Find all branches starting from this origin and enqueue them */
+            if(origin.depth == 8){
+                shortest_dist = distance;
+            printf("Measuring new path: ");
+            print_path(origin);
+            printf("Length = %f\n", measure_path_length(origin));
+            }
             create_downstream_paths(origin);
+        }
         // Else
             /* Skip all the paths starting from this origin, start over and dequeue another origin */
     }
@@ -88,6 +104,7 @@ void path_finder(void){
 int main() {
     paths_queue = createQueue();
     Path_t start = {0};
+    start.cities[0] = map[0];
 
 /* Enqueue the starting point */
     enqueue(paths_queue, start);
