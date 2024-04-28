@@ -16,24 +16,16 @@
 
 #define CITIES_NB 7
 
-city_t map[4] = {{0,9.96,53.46},
+city_t map[7] = {{0,9.96,53.46},
 {1,10.26,44.96},
 {2,1.32,43.68},
 {3,35.32,37.0},
 {4,35.32,37.0},
 {5,35.32,37.0},
-{6,35.32,37.0}
-};
+{6,35.32,37.0}};
 
-float distance_matrix[CITIES_NB][CITIES_NB];
 
-void init_distance_matrix();
-
-LockFreeQueue* todo_queue;
-
-void search_thread(){
-
-}
+LockFreeQueue* paths_queue;
 
 void print_path(Path_t path){
     for( int i = 0; i <= path.depth; i++){
@@ -42,9 +34,20 @@ void print_path(Path_t path){
     printf("\n");
 }
 
+/*
+* This function finds the paths branches
+* that follow the path passed as an agrument.
+* And enqueues them...
+*                                  / enqueued_path nb 1
+*                path passed as arg 
+*               /                  \ enqueued_path nb 2
+*  startng point
+*               \
+*
+*/
 void create_downstream_paths(Path_t origin){
-    /* Search for the city with the smallest index that's not already in the path */
     int index = 0;
+    /* Search for the city that's not already in the path */
     for( uint32_t missing_city = 0; missing_city < CITIES_NB; missing_city++){
         for( uint32_t j = 0; j <= origin.depth; j++){
             if ( missing_city == origin.cities[j].index){
@@ -54,36 +57,42 @@ void create_downstream_paths(Path_t origin){
             }
             else index = missing_city;
         }
-        if ( index > 0) {
+        if ( index > 0) { /* Append this city to the original path and enqueue it */
             Path_t new_path = origin;
             new_path.cities[++new_path.depth].index = index;     
-            enqueue(todo_queue, new_path);   
+            enqueue(paths_queue, new_path);   
         }
     }
 }
 
+
+/* This function should become a entire thread  */
 void path_finder(void){
     while(1){
         /* Dequeue an origin */
-        Path_t origin = dequeue(todo_queue);
+        Path_t origin = dequeue(paths_queue);
         printf("Measuring new path: ");
         print_path(origin);
-        /* Find all branches starting from this origin and enqueue them */
-        create_downstream_paths(origin);
+
+        /* Measure distance of this path */
+             // float distance = measure_distance(origin)
+
+        // If distance < shortest_path
+            /* Find all branches starting from this origin and enqueue them */
+            create_downstream_paths(origin);
+        // Else
+            /* Skip all the paths starting from this origin, start over and dequeue another origin */
     }
 }
 
 int main() {
-    todo_queue = createQueue();
+    paths_queue = createQueue();
     Path_t start = {0};
-    enqueue(todo_queue, start);
-    path_finder();
 
-    // start.depth = 0;
-    // create_downstream_path(start);
-    // start = dequeue(todo_queue);
-    // create_downstream_path(start);
-    // for (int i = 0; i<4; i++)
-    //     print_path(dequeue(todo_queue));
+/* Enqueue the starting point */
+    enqueue(paths_queue, start);
+
+/* Start the function that searches paths from an origin; and calculates their lenght */
+    path_finder();
     return 0;
 }
