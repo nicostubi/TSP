@@ -1,4 +1,4 @@
-CC=gcc -std=gnu11 -Wall -Wextra -g 
+CC=gcc -std=gnu11 -Wall -Wextra -g
 #-fsanitize=address -fsanitize=leak -fsanitize=undefined ->ralentit execution
 CFLAGS=
 LIBS=-lm -lrt -lpthread 

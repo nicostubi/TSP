@@ -4,6 +4,7 @@
 city_t * all_cities;
 uint32_t number_of_cities = 0; 
 
+
 void create_map_from_file(const char* filename){
     int size = 0;
     FILE *file = fopen(filename, "r");
