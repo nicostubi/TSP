@@ -6,7 +6,7 @@
 #include <stdatomic.h>
 #include <stdint.h>
 
-typedef struct{
+typedef struct {
     uint32_t index;
     float x;
     float y;
@@ -14,7 +14,7 @@ typedef struct{
 
 typedef struct {
     uint8_t depth;
-    city_t  cities[10];
+    city_t  cities[30];
 } Path_t;
 
 typedef struct Node {
