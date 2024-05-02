@@ -67,9 +67,9 @@ Path_t dequeue(LockFreeQueue* queue) {
         if (head == atomic_load(&queue->head)) {
             if (head == tail) {
                 while (next == NULL){
-                    head = atomic_load(&queue->head);
-                    tail = atomic_load(&queue->tail);
-                    next = atomic_load(&head->next);
+                    Path_t invalid_path = {0};
+                    invalid_path.depth = -1;
+                    return invalid_path;
                 };
                 atomic_compare_exchange_weak(&queue->tail, &tail, next);
             } else {

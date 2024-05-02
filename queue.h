@@ -13,7 +13,7 @@ typedef struct {
 } city_t;
 
 typedef struct {
-    uint32_t depth;
+    int depth;
     city_t  cities[15];
 } Path_t;
 

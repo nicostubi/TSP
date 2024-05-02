@@ -2,7 +2,7 @@
 
 /* global map */
 city_t * all_cities;
-uint32_t number_of_cities = 0; 
+int number_of_cities = 0; 
 float distances[20][20];
 
 float calculate_path_length(city_t city1, city_t city2){
@@ -32,7 +32,7 @@ void create_map_from_file(const char* filename){
     }
 
     // Read the file and store the locations in the array
-    uint32_t i = 0;
+    int i = 0;
     while (fgets(line, 1024, file) && (i < (number_of_cities))) {
         sscanf(line,"%i %f %f",&all_cities[i].index,&all_cities[i].x,&all_cities[i].y);
         all_cities[i].index = i;
@@ -51,9 +51,9 @@ void init_distances_matrix(){
 
 void init_distances() {
     //int count = 0;
-    for (uint32_t i = 0; i < number_of_cities; i++)
+    for (int i = 0; i < number_of_cities; i++)
     {
-        for (uint32_t j = 0; j < number_of_cities; j++)
+        for (int j = 0; j < number_of_cities; j++)
         {
             if (j != i) {
                 distances[i][j] = calculate_path_length(all_cities[i], all_cities[j]);
@@ -68,7 +68,7 @@ void init_distances() {
 
 float measure_path_length( Path_t path ){
     float dist = 0;
-    for( uint32_t i = 0; i < path.depth; i++){
+    for( int i = 0; i < path.depth; i++){
         dist += distances[path.cities[i].index][path.cities[i+1].index];
         //dist += sqrt(pow((path.cities[i].x)-(path.cities[i+1].x),2) + pow((path.cities[i].y)-(path.cities[i+1].y),2));
     }
