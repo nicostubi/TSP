@@ -13,8 +13,8 @@ typedef struct {
 } city_t;
 
 typedef struct {
-    uint8_t depth;
-    city_t  cities[30];
+    uint32_t depth;
+    city_t  cities[15];
 } Path_t;
 
 typedef struct Node {

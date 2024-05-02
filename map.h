@@ -12,6 +12,8 @@ void create_map_from_file();
 
 void init_distances_matrix();
 
+void init_distances();
+
 float measure_path_length( Path_t path );
 
 #endif

@@ -3,7 +3,11 @@
 /* global map */
 city_t * all_cities;
 uint32_t number_of_cities = 0; 
+float distances[20][20];
 
+float calculate_path_length(city_t city1, city_t city2){
+    return sqrt(pow((city1.x)-(city2.x),2) + pow((city1.y)-(city2.y),2));
+}
 
 void create_map_from_file(const char* filename){
     int size = 0;
@@ -37,6 +41,7 @@ void create_map_from_file(const char* filename){
     }
 
     fclose(file);
+    init_distances();
     return;
 }
 
@@ -44,10 +49,28 @@ void init_distances_matrix(){
 
 }
 
+void init_distances() {
+    //int count = 0;
+    for (uint32_t i = 0; i < number_of_cities; i++)
+    {
+        for (uint32_t j = 0; j < number_of_cities; j++)
+        {
+            if (j != i) {
+                distances[i][j] = calculate_path_length(all_cities[i], all_cities[j]);
+                //printf("dist between %d and %d : %f\n", i, j, distances[i][j]);
+                //count++;
+            }
+        }
+    }
+    //printf("init done for %d distances", count);
+}
+
+
 float measure_path_length( Path_t path ){
     float dist = 0;
-    for( int i = 0; i < path.depth; i++){
-        dist += sqrt(pow((path.cities[i].x)-(path.cities[i+1].x),2) + pow((path.cities[i].y)-(path.cities[i+1].y),2));
+    for( uint32_t i = 0; i < path.depth; i++){
+        dist += distances[path.cities[i].index][path.cities[i+1].index];
+        //dist += sqrt(pow((path.cities[i].x)-(path.cities[i+1].x),2) + pow((path.cities[i].y)-(path.cities[i+1].y),2));
     }
     return dist;
 }

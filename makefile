@@ -1,5 +1,5 @@
-CC=gcc -std=gnu11 -Wall -Wextra -g
-#-fsanitize=address -fsanitize=leak -fsanitize=undefined ->ralentit execution
+CC=gcc -std=gnu11 -Wall -Wextra -g 
+# -fsanitize=address -fsanitize=leak -fsanitize=undefined -O1
 CFLAGS=
 LIBS=-lm -lrt -lpthread 
 SRCS=$(wildcard *.c)

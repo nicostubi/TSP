@@ -6,7 +6,17 @@
 
 float shortest_dist = 99999999;
 
+long unsigned counter = 1;
+
 LockFreeQueue* paths_queue;
+
+long unsigned factorial(int val){
+    long unsigned ret = 1;
+    for(int i = 1; i < val; i++)
+        ret *= i;
+    ret = ret/2;
+    return ret;
+}
 
 void print_path(Path_t path){
     for( int i = 0; i <= path.depth; i++){
@@ -61,26 +71,34 @@ void path_finder(void){
 
         /* Measure distance of this path */
         float distance = measure_path_length(origin);
-
+        if(origin.depth == (number_of_cities)){ /* If the path is complete, update shortest_dist */
+            counter--;
+            //printf("%li\n",counter);
+        }
         if( distance < shortest_dist ) {
             if(origin.depth == (number_of_cities)){ /* If the path is complete, update shortest_dist */
                 shortest_dist = distance;
-                printf("Measuring new path: ");
+                //printf("Measuring new path: ");
                 print_path(origin);
                 printf("Length = %f\n", distance);
+                printf("%li\n",counter);
             }
             else /* Find all branches starting from this origin and enqueue them */
                 create_downstream_paths(origin);
         }
-//        if((distance < 80.0) && (origin.depth == number_of_cities))break;
-        // Else
-            /* Skip all the paths starting from this origin, start over and dequeue another origin */
+        //if((distance < 80.0) && (origin.depth == number_of_cities))break;
+        else { /* Skip all the paths starting from this origin, start over and dequeue another origin */
+            counter = counter - factorial(number_of_cities - origin.depth);
+            //printf("pruning branch, counter = %li %li\n",counter,factorial(number_of_cities - origin.depth));
+        }
+
+        if(counter == 0) return;
     }
 }
 
 int main(int argc, char *argv[]) {
     create_map_from_file(argv[1]);
-    printf("home city index is %i\n",all_cities[0].index);
+    counter = factorial(number_of_cities);
     paths_queue = createQueue();
     Path_t start = {0};
     start.cities[0] = all_cities[0];
@@ -89,10 +107,10 @@ int main(int argc, char *argv[]) {
     enqueue(paths_queue, start);
 
 /* Start the function that searches paths from an origin; and calculates their lenght */
-    // pthread_t main_thread[64];
+    pthread_t main_thread[64];
     // for(int i = 0; i<64; i++)
-        // pthread_create(&main_thread[i],NULL,path_finder,NULL);
-    // pthread_join(main_thread,NULL);
+    //     pthread_create(&main_thread[i],NULL,path_finder,NULL);
+    // pthread_join(main_thread[0],NULL);
     path_finder();
     return 0;
 }
