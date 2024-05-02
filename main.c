@@ -68,7 +68,7 @@ Path_t create_downstream_paths(Path_t origin){
             }  
         }
     }
-    printf("pushed %i cities\n",debug);
+    //printf("pushed %i cities\n",debug);
     /* If reached a leaf, append return to home */
     if( origin.depth == (number_of_cities-1)){
         first_path_for_us = origin;
@@ -87,35 +87,40 @@ void path_finder(void){
     while(1){
         /* Dequeue an origin */
         Path_t origin = dequeue(paths_queue);
-        printf("****dequeuing\n");
+        //printf("****dequeuing\n");
         /* Measure distance of this path */
         while (1){
-            printf("measuring\n");
+           // printf("measuring\n");
             float distance = measure_path_length(origin);
+            
             /* If the path is complete, update counter */
-            if(origin.depth == (number_of_cities)){
-                counter--;
-                printf("leaf!\n");
-                printf("counter: %li\n",counter);
-            }
+
 
             /* If the path is complete and a shorter path is found, update shortest_dist */
             if( distance < shortest_dist ) {
                 if(origin.depth == (number_of_cities)){ 
+                    printf("counter: %li\n",counter);
                     shortest_dist = distance;
-                    printf("New shortest path\n");
                     print_path(origin);
-                    printf("Length = %f\n", distance);
-                    
+                    break;
                 }
                 else{ /* Find all branches starting from this origin and enqueue them */
                     origin = create_downstream_paths(origin);
                 }
             }
+            else if(origin.depth == (number_of_cities)){
+                counter--;
+                printf("leaf!\n");
+                printf("counter: %li\n",counter);
+                print_path(origin);
+                break;
+            }
             /* Else skip all the paths starting from this origin, start over and dequeue another origin */
             else {
                 printf("longer branch depth %i, decreasing by %i\n",origin.depth,factorial(number_of_cities - origin.depth));
-                counter = counter - factorial(number_of_cities - origin.depth);
+                print_path(origin);
+                counter = counter - factorial(number_of_cities - (origin.depth))*2;
+                printf("counter: %li\n",counter);
                 break;
             }
         }
