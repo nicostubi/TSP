@@ -24,7 +24,6 @@ LockFreeQueue* createQueue() {
 
 void enqueue(LockFreeQueue* queue, Path_t data) {
     Node* newNode = malloc(sizeof(Node));
-    if(newNode == NULL) printf("failed malloc\n");
     if (!newNode) {
         perror("Failed to allocate memory for new node");
         exit(EXIT_FAILURE);

@@ -35,8 +35,11 @@ void print_path(Path_t path){
 *  startng point
 *               \
 */
-void create_downstream_paths(Path_t origin){
+Path_t create_downstream_paths(Path_t origin){
     int index = 0;
+    int debug = 0;
+    uint8_t first_path_found = 0;
+    Path_t first_path_for_us = {0};
     /* Search for the city that's not already in the path */
     for( uint32_t missing_city = 0; missing_city < number_of_cities; missing_city++){
         for( uint32_t j = 0; j <= origin.depth; j++){
@@ -45,21 +48,37 @@ void create_downstream_paths(Path_t origin){
                 index = 0;
                 break;
             }
-            else index = missing_city;
+            else {
+                // This city is not present
+                index = missing_city;
+            };
         }
+
         if ( index > 0) { /* Append this city to the original path and enqueue it */
-            Path_t new_path = origin;
-            //new_path.cities[++new_path.depth].index = index;    
-            new_path.cities[(++new_path.depth)] = all_cities[index]; 
-            enqueue(paths_queue, new_path);   
+            if(!first_path_found){ /* Save it to return it */
+                first_path_for_us = origin;
+                first_path_found = 1;
+                first_path_for_us.cities[(++first_path_for_us.depth)] = all_cities[index]; 
+            }
+            else { 
+                debug++;
+                Path_t new_path = origin;
+                new_path.cities[(++new_path.depth)] = all_cities[index]; 
+                enqueue(paths_queue, new_path); 
+            }  
         }
     }
+    printf("pushed %i cities\n",debug);
+    /* If reached a leaf, append return to home */
     if( origin.depth == (number_of_cities-1)){
-        //origin.cities[++origin.depth].index = 0;  
-        //printf("reached end, appending city %i\n",all_cities[0].index);  
-        origin.cities[++origin.depth] = all_cities[0]; 
-        enqueue(paths_queue, origin);   
+        first_path_for_us = origin;
+        first_path_for_us.cities[++first_path_for_us.depth] = all_cities[0]; 
+        //enqueue(paths_queue, origin);
+        return first_path_for_us;
     }
+    // Return the first branch to explore ourself
+    else 
+        return first_path_for_us;
 }
 
 
@@ -68,37 +87,46 @@ void path_finder(void){
     while(1){
         /* Dequeue an origin */
         Path_t origin = dequeue(paths_queue);
-
+        printf("****dequeuing\n");
         /* Measure distance of this path */
-        float distance = measure_path_length(origin);
-        if(origin.depth == (number_of_cities)){ /* If the path is complete, update shortest_dist */
-            counter--;
-            //printf("%li\n",counter);
-        }
-        if( distance < shortest_dist ) {
-            if(origin.depth == (number_of_cities)){ /* If the path is complete, update shortest_dist */
-                shortest_dist = distance;
-                //printf("Measuring new path: ");
-                print_path(origin);
-                printf("Length = %f\n", distance);
-                printf("%li\n",counter);
+        while (1){
+            printf("measuring\n");
+            float distance = measure_path_length(origin);
+            /* If the path is complete, update counter */
+            if(origin.depth == (number_of_cities)){
+                counter--;
+                printf("leaf!\n");
+                printf("counter: %li\n",counter);
             }
-            else /* Find all branches starting from this origin and enqueue them */
-                create_downstream_paths(origin);
-        }
-        //if((distance < 80.0) && (origin.depth == number_of_cities))break;
-        else { /* Skip all the paths starting from this origin, start over and dequeue another origin */
-            counter = counter - factorial(number_of_cities - origin.depth);
-            //printf("pruning branch, counter = %li %li\n",counter,factorial(number_of_cities - origin.depth));
-        }
 
-        if(counter == 0) return;
+            /* If the path is complete and a shorter path is found, update shortest_dist */
+            if( distance < shortest_dist ) {
+                if(origin.depth == (number_of_cities)){ 
+                    shortest_dist = distance;
+                    printf("New shortest path\n");
+                    print_path(origin);
+                    printf("Length = %f\n", distance);
+                    
+                }
+                else{ /* Find all branches starting from this origin and enqueue them */
+                    origin = create_downstream_paths(origin);
+                }
+            }
+            /* Else skip all the paths starting from this origin, start over and dequeue another origin */
+            else {
+                printf("longer branch depth %i, decreasing by %i\n",origin.depth,factorial(number_of_cities - origin.depth));
+                counter = counter - factorial(number_of_cities - origin.depth);
+                break;
+            }
+        }
+        if(counter <= 0) return;
     }
 }
 
 int main(int argc, char *argv[]) {
     create_map_from_file(argv[1]);
     counter = factorial(number_of_cities);
+    printf("counter = %i\n",counter);
     paths_queue = createQueue();
     Path_t start = {0};
     start.cities[0] = all_cities[0];
@@ -107,10 +135,11 @@ int main(int argc, char *argv[]) {
     enqueue(paths_queue, start);
 
 /* Start the function that searches paths from an origin; and calculates their lenght */
-    pthread_t main_thread[64];
+    // pthread_t main_thread[64];
     // for(int i = 0; i<64; i++)
     //     pthread_create(&main_thread[i],NULL,path_finder,NULL);
-    // pthread_join(main_thread[0],NULL);
+    // for(int i = 0; i<64; i++)
+    //     pthread_join(main_thread[i],NULL);
     path_finder();
     return 0;
 }
