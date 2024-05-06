@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdint.h>
+#include <string.h>
 #include "queue.h"
 #include <pthread.h>
 #include "map.h"
@@ -11,6 +12,10 @@ pthread_mutex_t count_mutex;
 long unsigned counter = 0;
 long unsigned pruned = 0;
 long unsigned normal_leafs = 0;
+
+int number_of_threads = 0;
+int max_depth = 0;
+
 LockFreeQueue* paths_queue;
 
 long unsigned factorial(int val){
@@ -32,6 +37,56 @@ void print_path(Path_t path){
         printf(" %i -> ", path.cities[i].index);
     }
     printf("\n");
+}
+
+long unsigned explore_entire_branch_alone( Path_t origin ){
+    int index = 0;
+    Path_t next_path = origin;
+    /* Search for the city that's not already in the path */
+    if(origin.depth < (number_of_cities-1)){
+        for( int missing_city = 0; missing_city < number_of_cities; missing_city++){
+            for( int j = 0; j <= origin.depth; j++){
+                if ( missing_city == (int)origin.cities[j].index){
+                    /* This city is already in the path */
+                    index = -1;
+                    break;
+                }
+                else {
+                    index = missing_city;
+                };
+            }
+            if(index >= 0){
+                next_path = origin;
+                next_path.cities[(++next_path.depth)] = all_cities[index];
+
+                if(measure_path_length(next_path) < shortest_dist){
+                    explore_entire_branch_alone(next_path);
+                }
+                else /* Prune */{
+                    pthread_mutex_lock(&count_mutex);
+                    counter -= remaining_nodes(number_of_cities - next_path.depth);
+                    pruned += remaining_nodes(number_of_cities - next_path.depth);
+                    pthread_mutex_unlock(&count_mutex);
+                }
+            }
+        }
+    }
+    else{ /* Path is complete, add return to home and measure distances */
+        next_path.cities[(++next_path.depth)] = all_cities[0];
+        float dist ;
+        pthread_mutex_lock(&count_mutex);
+        counter--;
+        normal_leafs++;
+        pthread_mutex_unlock(&count_mutex);
+        dist = measure_path_length(next_path);
+        if(dist < shortest_dist){
+            printf("New record found: %f at c = %lu:",dist,counter);
+            fflush(0);
+            print_path(next_path);
+            shortest_dist = dist;
+        }
+        return 0;
+    }
 }
 
 /*
@@ -96,12 +151,12 @@ void path_finder(void){
     while(1){
         /* Dequeue an origin */
         Path_t origin = dequeue(paths_queue);
-        if(origin.depth>=0){
-        //printf("****dequeuing\n");
+
+        if((origin.depth > max_depth)  && (counter>0)) /* If a certain depth is reached, do not enqueue anymore, explore branch alone */
+            explore_entire_branch_alone(origin); 
+        else if((origin.depth>=0) && (counter>0)){
         /* Measure distance of this path */
-            while (1){
-                //printf("counter: %li\n",counter);
-            // printf("measuring\n");
+            while (1){    
                 float distance = measure_path_length(origin);
 
                 /* If the path is complete and a shorter path is found, update shortest_dist */
@@ -128,7 +183,6 @@ void path_finder(void){
                     pthread_mutex_lock(&count_mutex);
                     counter = counter - remaining_nodes(number_of_cities - origin.depth) ;
                     pruned += remaining_nodes(number_of_cities - origin.depth);
-                    //printf("counter = %i\n",counter);
                     pthread_mutex_unlock(&count_mutex);
                     break;
                 }
@@ -136,7 +190,6 @@ void path_finder(void){
                     pthread_mutex_lock(&count_mutex);
                     counter--;
                     normal_leafs++;
-                    //printf("counter = %i\n",counter);
                     pthread_mutex_unlock(&count_mutex);
                     break;
                 }
@@ -147,55 +200,30 @@ void path_finder(void){
 }
 
 int main(int argc, char *argv[]) {
-    create_map_from_file(argv[1]);
-    counter = factorial(number_of_cities);
-    printf("counter = %li\n",counter);
-    paths_queue = createQueue();
-    Path_t start = {0};
-    start.cities[0] = all_cities[0];
+    if(argc == 4){
+        number_of_threads = atoi(argv[2]);
+        max_depth = atoi(argv[3]);
+        create_map_from_file(argv[1]);
+        counter = factorial(number_of_cities);
+        printf("counter = %lu\n",counter);
+        paths_queue = createQueue();
+        Path_t start = {0};
+        start.cities[0] = all_cities[0];
 
-/* Enqueue the starting point */
-    enqueue(paths_queue, start);
+        /* Enqueue the starting point */
+        enqueue(paths_queue, start);
 
-/* Start the function that searches paths from an origin; and calculates their lenght */
-    pthread_t main_thread[16];
-    // for(int i = 0; i<16; i++)
-    //     pthread_create(&main_thread[i],NULL,path_finder,NULL);
-    // for(int i = 0; i<16; i++)
-    //     pthread_join(main_thread[i],NULL);
-    path_finder();
+        /* Start the function that searches paths from an origin; and calculates their lenght */
+        pthread_t main_thread[number_of_threads];
+        for(int i = 0; i<number_of_threads; i++)
+            pthread_create(&main_thread[i],NULL,path_finder,NULL);
+        for(int i = 0; i<number_of_threads; i++)
+            pthread_join(main_thread[i],NULL);
+        // path_finder();
+        // explore_entire_branch_alone(start);
 
-    printf("Normal leafs = %li; Pruned = %li; Total = %li\n",normal_leafs, pruned, normal_leafs+pruned);
-    return 0;
+        printf("Normal leafs = %li; Pruned = %li; Total = %li\n",normal_leafs, pruned, normal_leafs+pruned);
+        return 0;
+    }
+    else printf("usage ./main <path_to_.stp_file> <number of threads> <max depth for parallel operations>\n");
 }
-
-
-// 20833.3333,17100.0000
-// 20900.0000,17066.6667
-// 21300.0000,13016.6667
-// 21600.0000,14150.0000
-// 21600.0000,14966.6667
-// 21600.0000,16500.0000
-// 22183.3333,13133.3333
-// 22583.3333,14300.0000
-// 22683.3333,12716.6667
-// 23616.6667,15866.6667
-// 23700.0000,15933.3333
-// 23883.3333,14533.3333
-// 24166.6667,13250.0000
-// 25149.1667,12365.8333
-// 26133.3333,14500.0000
-// 26150.0000,10550.0000
-// 26283.3333,12766.6667
-// 26433.3333,13433.3333
-// 26550.0000,13850.0000
-// 26733.3333,11683.3333
-// 27026.1111,13051.9444
-// 27096.1111,13415.8333
-// 27153.6111,13203.3333
-// 27166.6667,9833.3333
-// 27233.3333,10450.0000
-// 27233.3333,11783.3333
-// 27266.6667,10383.3333
-// 27433.3333,12400.0000
-// 27462.5000,12992.2222

@@ -14,7 +14,7 @@ typedef struct {
 
 typedef struct {
     int depth;
-    city_t  cities[15];
+    city_t  cities[16];
 } Path_t;
 
 typedef struct Node {
