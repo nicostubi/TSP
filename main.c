@@ -214,12 +214,17 @@ int main(int argc, char *argv[]) {
         enqueue(paths_queue, start);
 
         /* Start the function that searches paths from an origin; and calculates their lenght */
+        if(number_of_threads > 0){
         pthread_t main_thread[number_of_threads];
         for(int i = 0; i<number_of_threads; i++)
             pthread_create(&main_thread[i],NULL,path_finder,NULL);
         for(int i = 0; i<number_of_threads; i++)
             pthread_join(main_thread[i],NULL);
-        // path_finder();
+        }
+        else{
+            printf("Not using multithreads");
+            path_finder();
+        } 
         // explore_entire_branch_alone(start);
 
         printf("Normal leafs = %li; Pruned = %li; Total = %li\n",normal_leafs, pruned, normal_leafs+pruned);
