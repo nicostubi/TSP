@@ -14,7 +14,7 @@ typedef struct {
 
 typedef struct {
     int depth;
-    city_t  cities[16];
+    city_t  cities[19];
 } Path_t;
 
 typedef struct Node {
@@ -25,6 +25,7 @@ typedef struct Node {
 typedef struct {
     Node* head;
     Node* tail;
+    int counter;
 } LockFreeQueue;
 
 LockFreeQueue* createQueue();

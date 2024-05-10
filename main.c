@@ -9,6 +9,8 @@ float shortest_dist = 99999999;
 
 pthread_mutex_t count_mutex;
 
+long unsigned factorial_tab[20];
+
 long unsigned counter = 0;
 long unsigned pruned = 0;
 long unsigned normal_leafs = 0;
@@ -25,18 +27,26 @@ long unsigned factorial(int val){
     return ret;
 }
 
-long unsigned remaining_nodes(int val){
-    long unsigned ret = 1;
-    for(int i = 1; i < val; i++)
-        ret *= i;
-    return ret;
-}
-
 void print_path(Path_t path){
     for( int i = 0; i <= path.depth; i++){
         printf(" %i -> ", path.cities[i].index);
     }
     printf("\n");
+}
+
+int update_record(float new_record){
+    if( new_record > shortest_dist) return -1;
+    float actual_record = shortest_dist;
+    while(1){
+        if(new_record < actual_record){ /* If we still got the best record */
+            if (atomic_compare_exchange_weak(&shortest_dist, &actual_record, new_record)) {
+                return 1;
+            } /* If CAS invalid repeat */
+            printf("cas failed\n");
+        }
+        else /* A new record has been found */
+            return -1;
+    }
 }
 
 long unsigned explore_entire_branch_alone( Path_t origin ){
@@ -63,10 +73,7 @@ long unsigned explore_entire_branch_alone( Path_t origin ){
                     explore_entire_branch_alone(next_path);
                 }
                 else /* Prune */{
-                    pthread_mutex_lock(&count_mutex);
-                    counter -= remaining_nodes(number_of_cities - next_path.depth);
-                    pruned += remaining_nodes(number_of_cities - next_path.depth);
-                    pthread_mutex_unlock(&count_mutex);
+                    __sync_add_and_fetch(&counter, -factorial_tab[number_of_cities - next_path.depth]);
                 }
             }
         }
@@ -74,19 +81,16 @@ long unsigned explore_entire_branch_alone( Path_t origin ){
     else{ /* Path is complete, add return to home and measure distances */
         next_path.cities[(++next_path.depth)] = all_cities[0];
         float dist ;
-        pthread_mutex_lock(&count_mutex);
-        counter--;
-        normal_leafs++;
-        pthread_mutex_unlock(&count_mutex);
+        __sync_add_and_fetch(&counter, -1);
         dist = measure_path_length(next_path);
-        if(dist < shortest_dist){
+        if( update_record(dist) > 0){
             printf("New record found: %f at c = %lu:",dist,counter);
             fflush(0);
             print_path(next_path);
-            shortest_dist = dist;
         }
         return 0;
     }
+    return 0;
 }
 
 /*
@@ -101,7 +105,6 @@ long unsigned explore_entire_branch_alone( Path_t origin ){
 */
 Path_t create_downstream_paths(Path_t origin){
     int index = 0;
-    int debug = 0;
     uint8_t first_path_found = 0;
     Path_t first_path_for_us = {0};
     /* Search for the city that's not already in the path */
@@ -125,10 +128,11 @@ Path_t create_downstream_paths(Path_t origin){
                 first_path_for_us.cities[(++first_path_for_us.depth)] = all_cities[index]; 
             }
             else { 
-                debug++;
                 Path_t new_path = origin;
                 new_path.cities[(++new_path.depth)] = all_cities[index]; 
-                enqueue(paths_queue, new_path); 
+                if(measure_path_length(new_path) < shortest_dist)
+                    enqueue(paths_queue, new_path);
+                else __sync_add_and_fetch(&counter, -factorial_tab[number_of_cities - new_path.depth]) ; 
             }  
         }
     }
@@ -147,55 +151,53 @@ Path_t create_downstream_paths(Path_t origin){
 
 
 /* This function should become a entire thread  */
-void path_finder(void){
+void * path_finder(void * args){
     while(1){
         /* Dequeue an origin */
         Path_t origin = dequeue(paths_queue);
+        float distance = measure_path_length(origin);
 
-        if((origin.depth > max_depth)  && (counter>0)) /* If a certain depth is reached, do not enqueue anymore, explore branch alone */
-            explore_entire_branch_alone(origin); 
+        if((origin.depth >= max_depth)){ /* If a certain depth is reached, do not enqueue anymore, explore branch alone */
+            if(distance < shortest_dist)
+                explore_entire_branch_alone(origin); 
+            else __sync_add_and_fetch(&counter, -factorial_tab[number_of_cities - origin.depth]) ;
+        }
         else if((origin.depth>=0) && (counter>0)){
         /* Measure distance of this path */
             while (1){    
-                float distance = measure_path_length(origin);
-
+                distance = measure_path_length(origin);
                 /* If the path is complete and a shorter path is found, update shortest_dist */
-        
                 if( distance < shortest_dist ) {
                     if(origin.depth == (number_of_cities)){ 
-                        pthread_mutex_lock(&count_mutex);
-                        shortest_dist = distance;
-                        counter--;
-                        normal_leafs++;
+                        update_record(distance);                        
+                        __sync_add_and_fetch(&counter, -1);                        
                         printf("New record: %f at c = %li:",distance,counter);
-                        fflush(0);
                         print_path(origin);
-                        pthread_mutex_unlock(&count_mutex);
                         break;
                     }
                     else{ /* Find all branches starting from this origin and enqueue them */
-                        origin = create_downstream_paths(origin);
+                        // If queue is not overfilled
+                        if(paths_queue->counter < 1000000)
+                            origin = create_downstream_paths(origin);
+                        else {
+                            explore_entire_branch_alone(origin); 
+                            break;
+                        }
                     }
                 }
 
-                /* Else skip all the paths starting from this origin, start over and dequeue another origin */
+                /* Else if path is already longer, forget this path, dequeue another one */
                 else if (origin.depth < (number_of_cities-1)){
-                    pthread_mutex_lock(&count_mutex);
-                    counter = counter - remaining_nodes(number_of_cities - origin.depth) ;
-                    pruned += remaining_nodes(number_of_cities - origin.depth);
-                    pthread_mutex_unlock(&count_mutex);
+                    __sync_add_and_fetch(&counter, -factorial_tab[number_of_cities - origin.depth]) ;
                     break;
                 }
                 else {
-                    pthread_mutex_lock(&count_mutex);
-                    counter--;
-                    normal_leafs++;
-                    pthread_mutex_unlock(&count_mutex);
+                    __sync_add_and_fetch(&counter, -1);
                     break;
                 }
             }
         }
-        if(counter <= 0) return;
+        if(counter <= 0) return NULL;
     }
 }
 
@@ -205,6 +207,8 @@ int main(int argc, char *argv[]) {
         max_depth = atoi(argv[3]);
         create_map_from_file(argv[1]);
         counter = factorial(number_of_cities);
+        for(int i = 0; i<20; i++)
+            factorial_tab[i] = factorial(i);
         printf("counter = %lu\n",counter);
         paths_queue = createQueue();
         Path_t start = {0};
@@ -223,11 +227,11 @@ int main(int argc, char *argv[]) {
         }
         else{
             printf("Not using multithreads");
-            path_finder();
+            //path_finder();
+            explore_entire_branch_alone(start);
         } 
-        // explore_entire_branch_alone(start);
-
         printf("Normal leafs = %li; Pruned = %li; Total = %li\n",normal_leafs, pruned, normal_leafs+pruned);
+        destroyQueue(paths_queue);
         return 0;
     }
     else printf("usage ./main <path_to_.stp_file> <number of threads> <max depth for parallel operations>\n");

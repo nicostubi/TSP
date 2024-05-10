@@ -1,4 +1,4 @@
-CC=gcc -std=gnu11 -Wall -Wextra -g -O3
+CC=gcc -std=gnu11 -Wall -Wextra -g -Ofast
 # -fsanitize=address -fsanitize=leak -fsanitize=undefined -O1
 CFLAGS=
 LIBS=-lm -lrt -lpthread 

@@ -18,6 +18,7 @@ LockFreeQueue* createQueue() {
     dummy->next = NULL;
 
     queue->head = dummy;
+    queue->counter = 0;
     queue->tail = dummy;
     return queue;
 }
@@ -31,14 +32,14 @@ void enqueue(LockFreeQueue* queue, Path_t data) {
     newNode->data = data;
     newNode->next = NULL;
 
+    __sync_add_and_fetch(&queue->counter, 1);
+
     Node* tail;
     Node* next;
 
     while (1) {
         tail = atomic_load(&queue->tail);
         next = atomic_load(&tail->next);
-	asm("mfence");								// make sure that the variable is synchronized for all memories!
-
         if (tail == atomic_load(&queue->tail)) {
             if (next == NULL) {
                 if (atomic_compare_exchange_weak(&tail->next, &next, newNode)) {
@@ -57,13 +58,12 @@ Path_t dequeue(LockFreeQueue* queue) {
     Node* tail;
     Node* next;
     Path_t data;
+    __sync_add_and_fetch(&queue->counter, -1);
 
     while (1) {
         head = atomic_load(&queue->head);
         tail = atomic_load(&queue->tail);
         next = atomic_load(&head->next);
-	asm("mfence");								// make sure that the variable is synchronized for all memories!
-
         if (head == atomic_load(&queue->head)) {
             if (head == tail) {
                 while (next == NULL){
