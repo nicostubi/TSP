@@ -15,6 +15,9 @@ long unsigned counter = 0;
 long unsigned pruned = 0;
 long unsigned normal_leafs = 0;
 
+// Global pointer for thread counters
+long unsigned *thread_counters; 
+
 int number_of_threads = 0;
 int max_depth = 0;
 
@@ -152,18 +155,22 @@ Path_t create_downstream_paths(Path_t origin){
 
 /* This function should become a entire thread  */
 void * path_finder(void * args){
+    long thread_index = (long)args;
+    long unsigned local_counter = 0;
     while(1){
         /* Dequeue an origin */
         Path_t origin = dequeue(paths_queue);
         float distance = measure_path_length(origin);
 
         if((origin.depth >= max_depth)){ /* If a certain depth is reached, do not enqueue anymore, explore branch alone */
+            local_counter++;
             if(distance < shortest_dist)
                 explore_entire_branch_alone(origin); 
             else __sync_add_and_fetch(&counter, -factorial_tab[number_of_cities - origin.depth]) ;
         }
         else if((origin.depth>=0) && (counter>0)){
-        /* Measure distance of this path */
+            local_counter++;
+            /* Measure distance of this path */
             while (1){    
                 distance = measure_path_length(origin);
                 /* If the path is complete and a shorter path is found, update shortest_dist */
@@ -197,6 +204,7 @@ void * path_finder(void * args){
                 }
             }
         }
+        thread_counters[thread_index] = local_counter;
         if(counter <= 0) break;
     }
 }
@@ -217,6 +225,9 @@ int main(int argc, char *argv[]) {
         /* Enqueue the starting point */
         enqueue(paths_queue, start);
 
+        /* To capture nb oj jobs done per thread */
+        thread_counters = malloc(number_of_threads * sizeof(long unsigned));
+
         /* Start the function that searches paths from an origin; and calculates their lenght */
         if(number_of_threads > 0){
         pthread_t main_thread[number_of_threads];
@@ -231,6 +242,9 @@ int main(int argc, char *argv[]) {
             explore_entire_branch_alone(start);
         } 
         printf("Normal leafs = %li; Pruned = %li; Total = %li\n",normal_leafs, pruned, normal_leafs+pruned);
+        for (int i = 0; i < number_of_threads; i++) {
+            printf("Thread %d processed %lu jobs\n", i, thread_counters[i]);
+        }
         destroyQueue(paths_queue);
         return 0;
     }
