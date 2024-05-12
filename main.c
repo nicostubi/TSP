@@ -227,12 +227,14 @@ int main(int argc, char *argv[]) {
 
         /* To capture nb oj jobs done per thread */
         thread_counters = malloc(number_of_threads * sizeof(long unsigned));
+        for(int i = 0; i < number_of_threads; i++)
+            thread_counters[i] = 0;
 
         /* Start the function that searches paths from an origin; and calculates their lenght */
         if(number_of_threads > 0){
         pthread_t main_thread[number_of_threads];
         for(int i = 0; i<number_of_threads; i++)
-            pthread_create(&main_thread[i],NULL,path_finder,NULL);
+            pthread_create(&main_thread[i],NULL,path_finder,(void *)(long)i);
         for(int i = 0; i<number_of_threads; i++)
             pthread_join(main_thread[i],NULL);
         }
