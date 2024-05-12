@@ -4,6 +4,7 @@
 #include "queue.h"
 #include <pthread.h>
 #include "map.h"
+#include <time.h>
 
 float shortest_dist = 99999999;
 
@@ -15,8 +16,12 @@ long unsigned counter = 0;
 long unsigned pruned = 0;
 long unsigned normal_leafs = 0;
 
-// Global pointer for thread counters
-long unsigned *thread_counters; 
+typedef struct {
+    long unsigned jobs;
+    double cumulated_time;
+} ThreadStats;
+// Global pointer for thread stats
+ThreadStats *thread_stats; 
 
 int number_of_threads = 0;
 int max_depth = 0;
@@ -156,9 +161,11 @@ Path_t create_downstream_paths(Path_t origin){
 /* This function should become a entire thread  */
 void * path_finder(void * args){
     long thread_index = (long)args;
+    struct timespec start_time, end_time;
+    clock_gettime(CLOCK_MONOTONIC, &start_time);
     long unsigned local_counter = 0;
+
     while(1){
-        /* Dequeue an origin */
         Path_t origin = dequeue(paths_queue);
         float distance = measure_path_length(origin);
 
@@ -204,9 +211,16 @@ void * path_finder(void * args){
                 }
             }
         }
-        thread_counters[thread_index] = local_counter;
+
+        thread_stats[thread_index].jobs = local_counter;
+        clock_gettime(CLOCK_MONOTONIC, &end_time);
+        double elapsed_time = (end_time.tv_sec - start_time.tv_sec) + 
+                              (end_time.tv_nsec - start_time.tv_nsec) / 1e9;
+        thread_stats[thread_index].cumulated_time += elapsed_time;
+
         if(counter <= 0) break;
     }
+    return NULL;
 }
 
 int main(int argc, char *argv[]) {
@@ -225,28 +239,31 @@ int main(int argc, char *argv[]) {
         /* Enqueue the starting point */
         enqueue(paths_queue, start);
 
-        /* To capture nb oj jobs done per thread */
-        thread_counters = malloc(number_of_threads * sizeof(long unsigned));
-        for(int i = 0; i < number_of_threads; i++)
-            thread_counters[i] = 0;
+        /* To capture nb of jobs and cumulated time per thread */
+        thread_stats = malloc(number_of_threads * sizeof(ThreadStats));
+        for(int i = 0; i < number_of_threads; i++) {
+            thread_stats[i].jobs = 0;
+            thread_stats[i].cumulated_time = 0.0;
+        }
 
-        /* Start the function that searches paths from an origin; and calculates their lenght */
-        if(number_of_threads > 0){
-        pthread_t main_thread[number_of_threads];
-        for(int i = 0; i<number_of_threads; i++)
-            pthread_create(&main_thread[i],NULL,path_finder,(void *)(long)i);
-        for(int i = 0; i<number_of_threads; i++)
-            pthread_join(main_thread[i],NULL);
+        /* Start the function that searches paths from an origin; and calculates their length */
+        if(number_of_threads > 1){
+            pthread_t main_thread[number_of_threads];
+            for(int i = 0; i<number_of_threads; i++)
+                pthread_create(&main_thread[i],NULL,path_finder,(void *)(long)i);
+            for(int i = 0; i<number_of_threads; i++)
+                pthread_join(main_thread[i],NULL);
+            for (int i = 0; i < number_of_threads; i++) {
+                printf("Thread %d processed %lu jobs with a cumulated time of %.2f seconds\n", 
+                    i, thread_stats[i].jobs, thread_stats[i].cumulated_time);
+            }
         }
         else{
-            printf("Not using multithreads");
+            printf("Not using multithreads\n");
             //path_finder();
             explore_entire_branch_alone(start);
         } 
         printf("Normal leafs = %li; Pruned = %li; Total = %li\n",normal_leafs, pruned, normal_leafs+pruned);
-        for (int i = 0; i < number_of_threads; i++) {
-            printf("Thread %d processed %lu jobs\n", i, thread_counters[i]);
-        }
         destroyQueue(paths_queue);
         return 0;
     }
