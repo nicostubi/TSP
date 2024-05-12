@@ -162,21 +162,21 @@ Path_t create_downstream_paths(Path_t origin){
 void * path_finder(void * args){
     long thread_index = (long)args;
     struct timespec start_time, end_time;
-    clock_gettime(CLOCK_MONOTONIC, &start_time);
     long unsigned local_counter = 0;
 
     while(1){
+        clock_gettime(CLOCK_MONOTONIC, &start_time);
+        local_counter++;
         Path_t origin = dequeue(paths_queue);
         float distance = measure_path_length(origin);
 
         if((origin.depth >= max_depth)){ /* If a certain depth is reached, do not enqueue anymore, explore branch alone */
-            local_counter++;
+
             if(distance < shortest_dist)
                 explore_entire_branch_alone(origin); 
             else __sync_add_and_fetch(&counter, -factorial_tab[number_of_cities - origin.depth]) ;
         }
         else if((origin.depth>=0) && (counter>0)){
-            local_counter++;
             /* Measure distance of this path */
             while (1){    
                 distance = measure_path_length(origin);
@@ -212,11 +212,11 @@ void * path_finder(void * args){
             }
         }
 
-        thread_stats[thread_index].jobs = local_counter;
         clock_gettime(CLOCK_MONOTONIC, &end_time);
         double elapsed_time = (end_time.tv_sec - start_time.tv_sec) + 
-                              (end_time.tv_nsec - start_time.tv_nsec) / 1e9;
+                              (end_time.tv_nsec - start_time.tv_nsec) / 1e6;
         thread_stats[thread_index].cumulated_time += elapsed_time;
+        thread_stats[thread_index].jobs = local_counter;
 
         if(counter <= 0) break;
     }
@@ -254,7 +254,7 @@ int main(int argc, char *argv[]) {
             for(int i = 0; i<number_of_threads; i++)
                 pthread_join(main_thread[i],NULL);
             for (int i = 0; i < number_of_threads; i++) {
-                printf("Thread %d processed %lu jobs with a cumulated time of %.2f seconds\n", 
+                printf("Thread %d processed %lu jobs with a cumulated time of %.2f [ms]\n", 
                     i, thread_stats[i].jobs, thread_stats[i].cumulated_time);
             }
         }
