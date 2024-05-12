@@ -197,7 +197,7 @@ void * path_finder(void * args){
                 }
             }
         }
-        if(counter <= 0) return NULL;
+        if(counter <= 0) break;
     }
 }
 
