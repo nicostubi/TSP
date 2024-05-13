@@ -213,8 +213,14 @@ void * path_finder(void * args){
         }
 
         clock_gettime(CLOCK_MONOTONIC, &end_time);
-        double elapsed_time = (end_time.tv_sec - start_time.tv_sec) + 
-                              (end_time.tv_nsec - start_time.tv_nsec) / 1e6;
+        double elapsed_time;
+            if (end_time.tv_nsec < start_time.tv_nsec) {
+                elapsed_time = (end_time.tv_sec - start_time.tv_sec - 1) * 1000.0 + 
+                                     (end_time.tv_nsec + 1e9 - start_time.tv_nsec) / 1e6;
+            } else {
+                elapsed_time = (end_time.tv_sec - start_time.tv_sec) * 1000.0 + 
+                                     (end_time.tv_nsec - start_time.tv_nsec) / 1e6;
+            }
         thread_stats[thread_index].cumulated_time += elapsed_time;
         thread_stats[thread_index].jobs = local_counter;
 
@@ -225,6 +231,8 @@ void * path_finder(void * args){
 
 int main(int argc, char *argv[]) {
     if(argc == 4){
+        struct timespec start_time, end_time;
+        clock_gettime(CLOCK_MONOTONIC, &start_time);
         number_of_threads = atoi(argv[2]);
         max_depth = atoi(argv[3]);
         create_map_from_file(argv[1]);
@@ -257,6 +265,16 @@ int main(int argc, char *argv[]) {
                 printf("Thread %d processed %lu jobs with a cumulated time of %.2f [ms]\n", 
                     i, thread_stats[i].jobs, thread_stats[i].cumulated_time);
             }
+            clock_gettime(CLOCK_MONOTONIC, &end_time);
+            double total_elapsed_time;
+            if (end_time.tv_nsec < start_time.tv_nsec) {
+                total_elapsed_time = (end_time.tv_sec - start_time.tv_sec - 1) * 1000.0 + 
+                                     (end_time.tv_nsec + 1e9 - start_time.tv_nsec) / 1e6;
+            } else {
+                total_elapsed_time = (end_time.tv_sec - start_time.tv_sec) * 1000.0 + 
+                                     (end_time.tv_nsec - start_time.tv_nsec) / 1e6;
+            }
+            printf("Total execution time: %.2f [ms]\n", total_elapsed_time);
         }
         else{
             printf("Not using multithreads\n");
