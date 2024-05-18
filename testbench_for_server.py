@@ -3,23 +3,27 @@ import time
 import matplotlib.pyplot as plt
 
 # Define the program and its arguments
+# program = "Desktop/main"
+# path = "wi29.tsp"
 program = "./main"
 path = "/home/giovanni/Downloads/wi29.tsp"
-threads = ["0","2","4","8","16","32"]
-depths = ["4","5","6","7","8"]
+threads = ["0","2","4","8","16","32"]#, "64", "96", "128", "194","256"]
+depths = ["4","5","6","7"]
 
 # Measure the execution time of the program with different values for the arguments
 fig_counter = len(depths)
 for depth in depths:
     times = []
     for thread in threads:
-        print('measure: Threads = '+thread+" Max depth = " + depth)
-        start = time.time()
-        subprocess.run([program, path, thread, depth],capture_output=True)
-        end = time.time()
-        times.append(end - start)
-    print(times)
-    #plt.figure(fig_counter)
+        print('----- measure: Threads = '+thread+" Max depth = " + depth + ' -----')
+        local_times = []
+        for i in range (5):
+            start = time.time()
+            subprocess.run([program, path, thread, depth],capture_output=True)
+            end = time.time()
+            local_times.append(end - start)
+        print(local_times)    
+        times.append(sum(local_times)/5)
     plt.plot(threads, times,label=("max depth: "+depth))
     plt.xlabel("Threads")
     plt.ylabel("Execution Time (seconds)")
