@@ -52,6 +52,7 @@ int update_record(float new_record){
 long unsigned explore_entire_branch_alone_new( Path_t origin ){
     int present = 0;
     origin.depth++;
+    float base_length = measure_path_length(origin);
     /* Search for the city that's not already in the path */
     if(origin.depth < (number_of_cities)){
         for( int j = 0; j < origin.depth; j++){ /* Search for all the remaining cities */
@@ -60,7 +61,7 @@ long unsigned explore_entire_branch_alone_new( Path_t origin ){
         for( int i = 0; i<number_of_cities; i++){ /* Create new paths with them */
             if(((present>>i) & 1) == 0){ /* If city not present in the path */
                 origin.cities[(origin.depth)] = all_cities[i]; // Append it
-                if(measure_path_length(origin) < shortest_dist)
+                if((base_length + distances[origin.cities[i-1].index][i]) < shortest_dist)
                     explore_entire_branch_alone_new(origin);
                 else /* Prune */
                     __sync_fetch_and_sub(&counter, factorial_tab[number_of_cities - origin.depth]);
@@ -68,8 +69,8 @@ long unsigned explore_entire_branch_alone_new( Path_t origin ){
         }
     }
     else{ /* Path is complete, add return to home and measure distances */
+        update_record(base_length + distances[origin.cities[origin.depth-1].index][0]);
         origin.cities[(origin.depth)] = all_cities[0];
-        update_record(measure_path_length(origin));
         __sync_fetch_and_sub(&counter, 1);
     }
     return 0;
@@ -175,6 +176,7 @@ long unsigned explore_entire_branch_alone_old( Path_t origin ){
 Path_t create_downstream_paths(Path_t origin){
     int present = 0;
     uint8_t first_path_found = 0;
+    float base_length = measure_path_length(origin);
     origin.depth++;
     /* Search for the city that's not already in the path */
     for( int j = 0; j < origin.depth; j++){ /* Search for all the remaining cities */
@@ -188,7 +190,7 @@ Path_t create_downstream_paths(Path_t origin){
                 origin.cities[(origin.depth)] = all_cities[i]; // Append it
             }
             else{
-                if(measure_path_length(origin) < shortest_dist)
+                if((base_length + distances[origin.cities[i-1].index][i]) < shortest_dist)
                     enqueue(paths_queue,origin);
                 else /* Prune */
                     __sync_fetch_and_sub(&counter, factorial_tab[number_of_cities - origin.depth]);
@@ -234,7 +236,7 @@ void * path_finder(void * args){
                     }
                     else{ /* Find all branches starting from this origin and enqueue them */
                         // If queue is not overfilled
-                        if(paths_queue->counter < 1000000){
+                        if(paths_queue->counter < 100000000){
                             origin = create_downstream_paths(origin);
                             //explore_entire_branch_alone_new(origin);
                             //break;

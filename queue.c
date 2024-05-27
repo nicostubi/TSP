@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <stdatomic.h>
 #include "queue.h"
+#include <unistd.h>
 
 LockFreeQueue* createQueue() {
     LockFreeQueue* queue = malloc(sizeof(LockFreeQueue));
@@ -72,6 +73,7 @@ Path_t dequeue(LockFreeQueue* queue) {
                     return invalid_path;
                 };
                 atomic_compare_exchange_weak(&queue->tail, &tail, next);
+                usleep(10000);
             } else {
                 data = next->data;
                 if (atomic_compare_exchange_weak(&queue->head, &head, next)) {

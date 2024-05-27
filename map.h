@@ -8,6 +8,9 @@
 extern city_t * all_cities;
 extern int number_of_cities;
 
+extern float distances[20][20];
+
+
 void create_map_from_file();
 
 void init_distances_matrix();
