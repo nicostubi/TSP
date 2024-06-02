@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 # Define the program and its arguments
 program = "./main"
 path = "/home/giovanni/Downloads/wi29.tsp"
-threads = ["0","2","4","8","16","32"]
+threads = ["2","4","8","16","32"]
 depths = ["4","5","6","7","8"]
 
 # Measure the execution time of the program with different values for the arguments
