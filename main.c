@@ -159,11 +159,11 @@ void * path_finder(void * args){
                     }
                     else{ /* Find all branches starting from this origin and enqueue them */
                         origin = create_downstream_paths(origin, distance);
+                        if (paths_queue->counter >= (1000000)){
+                            explore_entire_branch_alone_new(origin, distance);
+                            break;
+                        }
                         distance = measure_path_length(origin);
-                        // if (origin.depth >= (max_depth)){
-                        //     explore_entire_branch_alone_new(origin, distance);
-                        //     break;
-                        // }
                     }
                 }
 
