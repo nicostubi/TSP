@@ -13,12 +13,15 @@ all: $(OUT)
 
 $(OUT):$(OBJ)
 	$(CC) $(OBJ) -o $@ $(LIBS)
+	rm *.o
 
 %.o: %.c
 	$(CC) $(CFLAGS) $< -c
 
 clean:
 	rm -f $(OUT) $(OBJ) 
-	
+
+run:
+	./main ./wi29.tsp 8 7	
 
 

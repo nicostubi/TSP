@@ -59,7 +59,10 @@ void fast_depth_exploration( void ){
     float dist = measure_path_length(test_path);
     print_path(test_path);
     if(dist<shortest_dist)
-        update_record(dist);
+        if(update_record(dist) > 0){
+            printf("New record found (from fast depth exploration) dist = %f, path = ",dist);
+            print_path(test_path);
+        }
 }
 
 long unsigned explore_entire_branch_alone_new( Path_t origin, float base_length ){
@@ -83,7 +86,11 @@ long unsigned explore_entire_branch_alone_new( Path_t origin, float base_length 
     }
     else{ /* Path is complete, add return to home and measure distances */
         origin.cities[(origin.depth)] = all_cities[0];
-        update_record(base_length + distances[base_end][0]);
+        if(update_record(base_length + distances[base_end][0]) > 0){
+            printf("New record found dist = %f, path = ",base_length + distances[base_end][0]);
+            print_path(origin);
+        }
+
         __sync_fetch_and_sub(&counter, 1);
     }
     return 0;
@@ -153,7 +160,10 @@ void * path_finder(void * args){
                 /* If the path is complete and a shorter path is found, update shortest_dist */
                 if( distance < shortest_dist ) {
                     if(origin.depth == (number_of_cities)){ 
-                        update_record(distance);                        
+                        if(update_record(distance)>0){
+                            printf("New record found dist = %f, path = ",distance);
+                            print_path(origin);
+                        }
                         __sync_fetch_and_sub(&counter, 1);                        
                         break;
                     }
@@ -194,7 +204,7 @@ int main(int argc, char *argv[]) {
         paths_queue = createQueue();
         Path_t start = {0};
         start.cities[0] = all_cities[0];
-        //fast_depth_exploration();
+        // fast_depth_exploration();
         /* Enqueue the starting point */
         enqueue(paths_queue, start);
 
@@ -208,7 +218,6 @@ int main(int argc, char *argv[]) {
         }
         else{
             printf("Not using multithreads\n");
-            //path_finder();
             explore_entire_branch_alone_new(start,0);
         } 
         destroyQueue(paths_queue);
