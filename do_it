@@ -1,0 +1,5 @@
+#/bin/bash
+
+make 
+echo "Launching tests"
+python3 testbench.py

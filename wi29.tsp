@@ -2,7 +2,7 @@ NAME : wi29
 COMMENT : 29 locations in Western Sahara
 COMMENT : Derived from National Imagery and Mapping Agency data
 TYPE : TSP
-DIMENSION : 16
+DIMENSION : 17
 EDGE_WEIGHT_TYPE : EUC_2D
 NODE_COORD_SECTION
 1 20833.3333 17100.0000

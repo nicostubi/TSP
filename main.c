@@ -204,7 +204,7 @@ int main(int argc, char *argv[]) {
         paths_queue = createQueue();
         Path_t start = {0};
         start.cities[0] = all_cities[0];
-        // fast_depth_exploration();
+        fast_depth_exploration();
         /* Enqueue the starting point */
         enqueue(paths_queue, start);
 
