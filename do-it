@@ -2,4 +2,4 @@
 
 make 
 echo "Launching tests"
-python3 testbench.py
+python3 testbench_for_server.py
